@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CareCircle</title><link rel="stylesheet" href="/static/style.css"><script src="/static/app.js" defer></script></head>
+<body class="{{ 'big' if session.get('big') }}"><a class="skip" href="#main">Skip to main content</a>
+<header><a href="/" class="brand">CareCircle</a>
+<nav aria-label="Main"><a href="/big">{{ 'Normal text' if session.get('big') else 'Large text' }}</a>{% if session.get('mid') %}<a href="/logout">Log out</a>{% endif %}</nav></header>
+<main id="main">{% for msg in get_flashed_messages() %}<div class="flash" role="status">{{ msg }}</div>{% endfor %}{% block body %}{% endblock %}</main>
+<footer>CareCircle is a reminder tool. It is not a substitute for a doctor's advice.</footer>
+</body></html>

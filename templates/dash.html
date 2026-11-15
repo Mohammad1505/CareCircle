@@ -1,0 +1,48 @@
+{% extends "base.html" %}{% block body %}
+{% if paused %}<div class="card"><h2>Access paused</h2><p>{{ elder.name }} has paused your access to this profile.</p></div>
+{% else %}
+<h1>{{ elder.name }}'s care plan</h1>
+<p class="muted">Signed in as {{ m.name }} ({{ m.role }})</p>
+
+<section class="card" aria-labelledby="h-doses"><h2 id="h-doses">Today's doses</h2>
+{% for d in doses %}<div class="row"><div><strong>{{ d.due[11:] }}</strong> &nbsp;{{ d.name }} {{ d.dose }} <span class="badge {{ d.status }}">{{ d.status }}</span></div>
+{% if d.status != 'taken' and ed %}<form method="post" action="/dose/{{ d.id }}/taken"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="bigbtn" aria-label="Mark {{ d.name }} at {{ d.due[11:] }} as taken">Mark as taken</button></form>{% endif %}</div>
+{% else %}<p class="muted">No doses scheduled today.</p>{% endfor %}
+{% if ed %}<form method="post" action="/tick"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="ghost">Check reminders now</button></form>{% endif %}</section>
+
+<section class="card" aria-labelledby="h-meds"><h2 id="h-meds">Medicines</h2>
+{% if ed %}<form method="post" action="/meds/quick" class="inline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input name="text" aria-label="Describe the medicine in plain words" placeholder='Try: Metformin 500mg twice daily after meals' required><button>Add with AI</button></form>
+<details><summary>Add manually</summary><form method="post" action="/meds/add" class="stack"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<input name="name" aria-label="Medicine name" placeholder="Medicine" required><input name="dose" aria-label="Dose" placeholder="Dose, e.g. 500mg"><input name="times" aria-label="Times, comma separated" placeholder="Times, e.g. 08:00,20:00" required><button>Add</button></form></details>{% endif %}
+{% for x in meds %}<div class="row"><div><strong>{{ x.name }}</strong> {{ x.dose }}<br><span class="muted">at {{ x.times }}</span></div>
+{% if ed %}<div class="actions"><details><summary>Edit {{ x.name }}</summary><form method="post" action="/meds/{{ x.id }}/edit" class="stack"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+<input name="name" aria-label="Medicine name" value="{{ x.name }}" required><input name="dose" aria-label="Dose" value="{{ x.dose }}"><input name="times" aria-label="Times, comma separated" value="{{ x.times }}" required><button>Save</button></form></details>
+<form method="post" action="/meds/{{ x.id }}/delete" data-confirm="Delete this medicine?"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="ghost" aria-label="Delete {{ x.name }}">Delete</button></form></div>{% endif %}</div>
+{% else %}<p class="muted">No medicines yet.</p>{% endfor %}</section>
+
+<section class="card" aria-labelledby="h-appt"><h2 id="h-appt">Appointments</h2>
+{% if ed %}<form method="post" action="/appts/add" class="inline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input name="title" aria-label="Doctor or purpose" placeholder="Doctor / purpose" required><input type="datetime-local" name="at" aria-label="Date and time" required><button>Add</button></form>{% endif %}
+{% for a in appts %}<div class="row"><div><strong>{{ a.title }}</strong><br><span class="muted">{{ a.at }}</span></div>
+{% if ed %}<form method="post" action="/appts/{{ a.id }}/delete"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="ghost" aria-label="Delete appointment {{ a.title }}">Delete</button></form>{% endif %}</div>
+{% else %}<p class="muted">No appointments yet.</p>{% endfor %}</section>
+
+<section class="card" aria-labelledby="h-sum"><h2 id="h-sum">Adherence and weekly summary</h2>
+<p class="muted"><a href="/dash?lang=en">English</a> | <a href="/dash?lang=hi" lang="hi">हिन्दी</a></p><p>{{ text }}</p>
+{% for x in history %}<div class="row small"><span>{{ x.name }}, {{ x.due }}</span><span class="badge {{ x.status }}">{{ x.status }}</span></div>{% endfor %}
+{% if ed %}<form method="post" action="/summary/send"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="lang" value="{{ lang }}"><button class="ghost">Email to caretakers and family</button></form>{% endif %}</section>
+
+{% if m.role == 'elder' %}<section class="card" aria-labelledby="h-mem"><h2 id="h-mem">Who can see this profile</h2>
+<p class="muted">You decide who views the plan (and receives alerts) and who can edit. Caretakers are alerted when a dose is missed, family a little later.</p>
+{% for x in members if x.role != 'elder' %}<div class="row"><div><strong>{{ x.name }}</strong> ({{ x.role }})</div>
+<div class="actions"><form method="post" action="/members/{{ x.id }}/toggle/can_view"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="ghost">{{ 'View + alerts: on' if x.can_view else 'View + alerts: off' }}</button></form>
+<form method="post" action="/members/{{ x.id }}/toggle/can_edit"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="ghost">{{ 'Can edit: on' if x.can_edit else 'Can edit: off' }}</button></form>
+<form method="post" action="/members/{{ x.id }}/reset" data-confirm="Create a new passcode for this person?"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="ghost" aria-label="Reset passcode for {{ x.name }}">Reset passcode</button></form>
+<form method="post" action="/members/{{ x.id }}/delete" data-confirm="Remove this person?"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="ghost" aria-label="Remove {{ x.name }}">Remove</button></form></div></div>
+{% else %}<p class="muted">No one invited yet.</p>{% endfor %}
+<form method="post" action="/members/add" class="inline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><input name="name" aria-label="Name" placeholder="Name" required><input type="email" name="email" aria-label="Email" placeholder="Email">
+<select name="role" aria-label="Role"><option value="caretaker">Caretaker</option><option value="family">Family</option></select><button>Invite</button></form></section>{% endif %}
+
+<section class="card" aria-labelledby="h-log"><h2 id="h-log">Recent notifications</h2>
+{% for l in logs %}<div class="row small"><span>{{ l.subject }}<br><span class="muted">to {{ l.to_addr }}</span></span><span class="muted">{{ l.ts }}</span></div>
+{% else %}<p class="muted">Nothing sent yet.</p>{% endfor %}</section>
+{% endif %}{% endblock %}
